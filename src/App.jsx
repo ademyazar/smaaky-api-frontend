@@ -15,12 +15,15 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+
   useEffect(() => {
     const loadMenu = async () => {
       try {
         setError("");
-
         const response = await fetch(`${API_BASE}/menu`);
+
         if (!response.ok) {
           throw new Error("Menu kon niet worden geladen");
         }
@@ -29,27 +32,43 @@ function App() {
         setMenu(data);
       } catch (err) {
         console.error("Menu error:", err);
-        setError("Menu yüklenemedi. Console’a bak.");
+        setError("Menu yüklenemedi.");
       }
     };
 
     loadMenu();
   }, []);
 
-  const addToCart = (item) => {
+  const openProductModal = (item) => {
+    setSelectedProduct(item);
+    setSelectedQuantity(1);
+  };
+
+  const closeProductModal = () => {
+    setSelectedProduct(null);
+    setSelectedQuantity(1);
+  };
+
+  const addToCart = (product, quantity = 1) => {
     setCart((prev) => {
-      const existing = prev.find((cartItem) => cartItem.id === item.id);
+      const existing = prev.find((cartItem) => cartItem.id === product.id);
 
       if (existing) {
         return prev.map((cartItem) =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+          cartItem.id === product.id
+            ? { ...cartItem, quantity: cartItem.quantity + quantity }
             : cartItem
         );
       }
 
-      return [...prev, { ...item, quantity: 1 }];
+      return [...prev, { ...product, quantity }];
     });
+  };
+
+  const confirmAddToCart = () => {
+    if (!selectedProduct) return;
+    addToCart(selectedProduct, selectedQuantity);
+    closeProductModal();
   };
 
   const increaseQty = (id) => {
@@ -137,7 +156,10 @@ function App() {
       <header className="topbar">
         <div>
           <h1>Smaaky</h1>
-          <p className="subtitle">Smashburgers, chicken burgers en meer</p>
+          <p className="subtitle">
+            Smashburgers, chicken burgers en meer
+          </p>
+          <p className="restaurant-meta">⭐ 4.8 • 30-45 min • Delivery</p>
         </div>
         <div className="status">Online bestellen</div>
       </header>
@@ -169,8 +191,11 @@ function App() {
                   <strong>€{item.price}</strong>
                 </div>
 
-                <button className="add-btn" onClick={() => addToCart(item)}>
-                  Toevoegen
+                <button
+                  className="add-btn"
+                  onClick={() => openProductModal(item)}
+                >
+                  Bekijken
                 </button>
               </div>
             ))}
@@ -238,6 +263,38 @@ function App() {
           )}
         </aside>
       </div>
+
+      {selectedProduct && (
+        <div className="modal-overlay" onClick={closeProductModal}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeProductModal}>
+              ×
+            </button>
+
+            <h2>{selectedProduct.name}</h2>
+            <p>{selectedProduct.description}</p>
+            <strong className="modal-price">€{selectedProduct.price}</strong>
+
+            <div className="modal-qty">
+              <button
+                onClick={() =>
+                  setSelectedQuantity((q) => Math.max(1, q - 1))
+                }
+              >
+                -
+              </button>
+              <span>{selectedQuantity}</span>
+              <button onClick={() => setSelectedQuantity((q) => q + 1)}>
+                +
+              </button>
+            </div>
+
+            <button className="modal-add-btn" onClick={confirmAddToCart}>
+              Toevoegen aan winkelwagen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
