@@ -3,10 +3,69 @@ import "./App.css";
 
 const API_BASE = "https://lightsalmon-penguin-903536.hostingersite.com/api";
 
+const categoryOrder = [
+  "Populair",
+  "Smashburgers",
+  "Chicken burgers",
+  "Loaded fries",
+  "Snacks",
+  "Sauzen",
+  "Dranken",
+  "Desserts",
+];
+
+const fallbackImages = {
+  burger:
+    "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80",
+  chicken:
+    "https://images.unsplash.com/photo-1610614819513-58e34989848b?auto=format&fit=crop&w=900&q=80",
+  fries:
+    "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?auto=format&fit=crop&w=900&q=80",
+  snack:
+    "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80",
+  sauce:
+    "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?auto=format&fit=crop&w=900&q=80",
+  drink:
+    "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80",
+  dessert:
+    "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=900&q=80",
+};
+
+function detectCategory(item) {
+  const name = `${item.name} ${item.description}`.toLowerCase();
+
+  if (name.includes("chicken")) return "Chicken burgers";
+  if (name.includes("fries")) return "Loaded fries";
+  if (name.includes("sauce") || name.includes("saus")) return "Sauzen";
+  if (name.includes("cola") || name.includes("fanta") || name.includes("drink"))
+    return "Dranken";
+  if (name.includes("ice") || name.includes("dessert") || name.includes("ben"))
+    return "Desserts";
+  if (name.includes("classic") || name.includes("burger") || name.includes("cheese"))
+    return "Smashburgers";
+
+  return "Smashburgers";
+}
+
+function getImageForItem(item) {
+  const text = `${item.name} ${item.description}`.toLowerCase();
+
+  if (text.includes("chicken")) return fallbackImages.chicken;
+  if (text.includes("fries")) return fallbackImages.fries;
+  if (text.includes("sauce") || text.includes("saus")) return fallbackImages.sauce;
+  if (text.includes("cola") || text.includes("fanta") || text.includes("drink"))
+    return fallbackImages.drink;
+  if (text.includes("dessert") || text.includes("ice")) return fallbackImages.dessert;
+  if (text.includes("snack")) return fallbackImages.snack;
+
+  return fallbackImages.burger;
+}
+
 function App() {
   const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState([]);
   const [error, setError] = useState("");
+  const [activeCategory, setActiveCategory] = useState("Populair");
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -38,6 +97,28 @@ function App() {
 
     loadMenu();
   }, []);
+
+  const normalizedMenu = useMemo(() => {
+    return menu.map((item) => ({
+      ...item,
+      category: detectCategory(item),
+      image: getImageForItem(item),
+    }));
+  }, [menu]);
+
+  const groupedMenu = useMemo(() => {
+    const groups = {
+      Populair: normalizedMenu.slice(0, 4),
+    };
+
+    categoryOrder.forEach((category) => {
+      if (category !== "Populair") {
+        groups[category] = normalizedMenu.filter((item) => item.category === category);
+      }
+    });
+
+    return groups;
+  }, [normalizedMenu]);
 
   const openProductModal = (item) => {
     setSelectedProduct(item);
@@ -96,6 +177,18 @@ function App() {
     );
   }, [cart]);
 
+  const cartCount = useMemo(() => {
+    return cart.reduce((sum, item) => sum + item.quantity, 0);
+  }, [cart]);
+
+  const scrollToCategory = (category) => {
+    setActiveCategory(category);
+    const element = document.getElementById(`section-${category}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const handleOrder = async () => {
     setMessage("");
 
@@ -153,60 +246,116 @@ function App() {
 
   return (
     <div className="page">
-      <header className="topbar">
-        <div>
+      <header className="hero">
+        <img
+          className="hero-image"
+          src="https://images.unsplash.com/photo-1561758033-d89a9ad46330?auto=format&fit=crop&w=1600&q=80"
+          alt="Smaaky burgers"
+        />
+        <div className="hero-overlay" />
+        <div className="hero-content">
+          <div className="hero-badge">SMAAKY</div>
           <h1>Smaaky</h1>
-          <p className="subtitle">
-            Smashburgers, chicken burgers en meer
-          </p>
-          <p className="restaurant-meta">⭐ 4.8 • 30-45 min • Delivery</p>
+          <p>Smashburgers, chicken burgers en meer</p>
         </div>
-        <div className="status">Online bestellen</div>
       </header>
 
+      <div className="restaurant-bar">
+        <div className="restaurant-main">
+          <div className="restaurant-title-row">
+            <h2>Smaaky</h2>
+            <span className="delivery-pill">Delivery</span>
+          </div>
+          <div className="restaurant-meta-row">
+            <span>⭐ 4.8</span>
+            <span>30-45 min</span>
+            <span>€ 2.50 bezorging</span>
+            <span>Min. € 10,00</span>
+          </div>
+        </div>
+        <button className="hero-order-btn">Online bestellen</button>
+      </div>
+
+      <div className="chip-bar">
+        {categoryOrder.map((category) => (
+          <button
+            key={category}
+            className={`chip ${activeCategory === category ? "chip-active" : ""}`}
+            onClick={() => scrollToCategory(category)}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
       <div className="layout">
-        <aside className="sidebar">
-          <h3>Categorieën</h3>
-          <ul>
-            <li>Smashburgers</li>
-            <li>Chicken burgers</li>
-            <li>Loaded fries</li>
-            <li>Sauzen</li>
-            <li>Dranken</li>
-            <li>Desserts</li>
-          </ul>
-        </aside>
-
         <main className="content">
-          <h2>Menu</h2>
-
           {error && <p className="message">{error}</p>}
 
-          <div className="menu-list">
-            {menu.map((item) => (
-              <div className="menu-card" key={item.id}>
-                <div className="menu-info">
-                  <h3>{item.name}</h3>
-                  <p>{item.description}</p>
-                  <strong>€{item.price}</strong>
+          {categoryOrder.map((category) => {
+            const items = groupedMenu[category] || [];
+            if (!items.length) return null;
+
+            return (
+              <section
+                key={category}
+                id={`section-${category}`}
+                className="menu-section"
+              >
+                <div className="section-header">
+                  <h3>{category}</h3>
+                  <p>
+                    {category === "Populair"
+                      ? "Meest gekozen producten"
+                      : `${category} van Smaaky`}
+                  </p>
                 </div>
 
-                <button
-                  className="add-btn"
-                  onClick={() => openProductModal(item)}
-                >
-                  Bekijken
-                </button>
-              </div>
-            ))}
-          </div>
+                <div className="menu-grid">
+                  {items.map((item) => (
+                    <article className="menu-row-card" key={`${category}-${item.id}`}>
+                      <div className="menu-row-content">
+                        <div className="menu-row-top">
+                          <div>
+                            <h4>{item.name}</h4>
+                            <p>{item.description}</p>
+                          </div>
+                          <div className="menu-row-price">€{item.price}</div>
+                        </div>
+
+                        <div className="menu-row-bottom">
+                          <button
+                            className="view-btn"
+                            onClick={() => openProductModal(item)}
+                          >
+                            Bekijken
+                          </button>
+                        </div>
+                      </div>
+
+                      <img
+                        className="menu-thumb"
+                        src={item.image}
+                        alt={item.name}
+                      />
+                    </article>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </main>
 
         <aside className="cart">
-          <h3>Winkelwagen</h3>
+          <div className="cart-header">
+            <h3>Winkelwagen</h3>
+            <span>{cartCount} items</span>
+          </div>
 
           {cart.length === 0 ? (
-            <p>Je winkelwagen is leeg</p>
+            <div className="empty-cart">
+              <p>Je winkelwagen is leeg</p>
+            </div>
           ) : (
             <>
               {cart.map((item) => (
@@ -264,12 +413,24 @@ function App() {
         </aside>
       </div>
 
+      <div className="mobile-cart-bar">
+        <button className="mobile-cart-button">
+          Bekijk winkelwagen · {cartCount} · €{total.toFixed(2)}
+        </button>
+      </div>
+
       {selectedProduct && (
         <div className="modal-overlay" onClick={closeProductModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={closeProductModal}>
               ×
             </button>
+
+            <img
+              className="modal-image"
+              src={selectedProduct.image}
+              alt={selectedProduct.name}
+            />
 
             <h2>{selectedProduct.name}</h2>
             <p>{selectedProduct.description}</p>
